@@ -1,0 +1,9 @@
+Makefile
+_build/
+horseos.xe
+horseos.xl
+horseos_libvirt.xml
+log
+main.ml
+main.native
+mir-horseos
