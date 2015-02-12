@@ -9,16 +9,18 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       let dst, dst_port = S.TCPV4.get_dest flow in
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
       C.log_s c message in
-
-    let handle_read = function
-      | `Ok buf -> C.log_s c ( "read some data: " ^ (Cstruct.to_string buf) )
-      | `Eof -> C.log_s c "read: eof"
-      | `Error _ -> C.log_s c "read: error" in
-
-    log_conn c flow >> 
-    S.TCPV4.read flow >>=
-    handle_read >>
-    S.TCPV4.close flow
+    let handle_write buf = S.TCPV4.write flow buf >>= function
+      | `Ok () -> C.log_s c "write" >> S.TCPV4.close flow
+      | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
+      | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow
+    in
+    let handle_read = S.TCPV4.read flow >>= function
+      | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
+      | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
+      | `Ok buf -> handle_write buf
+    in
+    log_conn c flow >>
+    handle_read
 
   let start c s = 
     C.log c "HorseOS is starting.";
