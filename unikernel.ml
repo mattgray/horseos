@@ -17,8 +17,19 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
       | `Ok buf -> handle_write buf
 
+
+  let horse_ascii = "welcome to HorseOS 0.01          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /--______      ___\\    /\\  :\n| /   __-  - _/   ------    |  |   \\ \\\n |   -  -   /                | |     \\ )\n |  |   -  |                 | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\n"
+
+  let write_welcome c flow = 
+    let welcome_message = Cstruct.of_string horse_ascii in
+    S.TCPV4.write flow welcome_message >>= function
+      | `Ok () -> C.log_s c "write" >> handle_read c flow
+      | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
+      | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow
+
+
   let start c s = 
     C.log c "HorseOS is starting.";
-    S.listen_tcpv4 s ~port:4444 (fun flow -> log_conn c flow >> handle_read c flow);
+    S.listen_tcpv4 s ~port:4444 (fun flow -> log_conn c flow >> write_welcome c flow);
     S.listen s
 end
