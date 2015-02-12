@@ -15,7 +15,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     S.TCPV4.read flow >>= function
       | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
       | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
-      | `Ok buf -> handle_write buf
+      | `Ok buf -> C.log_s c ( "read: " ^ Cstruct.to_string buf) >> handle_write buf
 
 
   let horse_ascii = "welcome to HorseOS 0.01          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /--______      ___\\    /\\  :\n| /   __-  - _/   ------    |  |   \\ \\\n |   -  -   /                | |     \\ )\n |  |   -  |                 | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\n"
