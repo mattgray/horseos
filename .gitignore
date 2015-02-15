@@ -7,3 +7,5 @@ log
 main.ml
 main.native
 mir-horseos
+Vagrantfile
+.vagrant
