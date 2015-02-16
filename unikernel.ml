@@ -10,6 +10,13 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
       C.log_s c message in
 
+    let write_welcome flow =
+      let welcome_message = Cstruct.of_string horse_ascii in
+      S.TCPV4.write flow welcome_message >>= function
+        | `Ok () -> C.log_s c "write" >> return ()
+        | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
+        | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow in
+
     let messages = Lwt_condition.create () in
 
     let rec read_input flow =
@@ -21,13 +28,6 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     let rec handle_message flow = Lwt_condition.wait messages >>=
       fun message -> S.TCPV4.write flow message  >>= function
         | `Ok () -> C.log_s c "write" >> handle_message flow
-        | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
-        | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow in
-
-    let write_welcome flow =
-      let welcome_message = Cstruct.of_string horse_ascii in
-      S.TCPV4.write flow welcome_message >>= function
-        | `Ok () -> C.log_s c "write" >> return ()
         | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow in
 
