@@ -19,11 +19,13 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
     let messages = Lwt_condition.create () in
 
-    let rec read_input flow =
-      S.TCPV4.read flow >>=function
+    let rec read_input username flow =
+      S.TCPV4.read flow >>= function
         | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
-        | `Ok buf -> return ( Lwt_condition.broadcast messages buf ) >> read_input flow in
+        | `Ok buf -> C.log_s c username >> 
+          return ( Lwt_condition.broadcast messages (Cstruct.of_string(username^": "^(Cstruct.to_string buf))) ) >>
+          read_input username flow in
 
     let rec handle_message flow = Lwt_condition.wait messages >>=
       fun message -> S.TCPV4.write flow message  >>= function
@@ -31,11 +33,17 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow in
 
+    let main flow =
+      S.TCPV4.read flow >>= function
+        | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
+        | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
+        | `Ok buf -> let username = String.trim ( Cstruct.to_string buf ) in 
+          join [ read_input username flow; handle_message flow ] in
+
     C.log c "HorseOS is starting.";
 
     S.listen_tcpv4 s ~port:4444 (fun flow ->
-      log_conn flow >> write_welcome flow >>
-      join [ read_input flow; handle_message flow]
+      log_conn flow >> write_welcome flow >> main flow
     );
 
     S.listen s;
