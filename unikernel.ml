@@ -24,7 +24,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
         | `Ok buf -> C.log_s c username >> let message = Cstruct.to_string buf in  
-          return ( Lwt_condition.broadcast messages (username ^ ": " ^ message)) >>
+          return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ) ) >>
           read_input username flow in
 
     let rec handle_message flow = Lwt_condition.wait messages >>=
@@ -37,7 +37,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
-        | `Ok buf -> let username = String.trim ( Cstruct.to_string buf ) in 
+        | `Ok buf -> let username = String.trim ( Cstruct.to_string buf ) in
+          return ( Lwt_condition.broadcast messages (username ^ " joined\n" ) ) >>
           join [ read_input username flow; handle_message flow ] in
 
     C.log c "HorseOS is starting.";
