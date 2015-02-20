@@ -23,12 +23,12 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> C.log_s c "read: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "read: error" >> S.TCPV4.close flow
-        | `Ok buf -> C.log_s c username >> 
-          return ( Lwt_condition.broadcast messages (Cstruct.of_string(username^": "^(Cstruct.to_string buf))) ) >>
+        | `Ok buf -> C.log_s c username >> let message = Cstruct.to_string buf in  
+          return ( Lwt_condition.broadcast messages (username ^ ": " ^ message)) >>
           read_input username flow in
 
     let rec handle_message flow = Lwt_condition.wait messages >>=
-      fun message -> S.TCPV4.write flow message  >>= function
+      fun message -> S.TCPV4.write flow ( Cstruct.of_string message )  >>= function
         | `Ok () -> C.log_s c "write" >> handle_message flow
         | `Eof -> C.log_s c "write: eof" >> S.TCPV4.close flow
         | `Error _ -> C.log_s c "write: error" >> S.TCPV4.close flow in
