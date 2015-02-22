@@ -11,38 +11,42 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       C.log_s c message in
 
     let messages = Lwt_condition.create () in
- 
-    let close_conn flow reason = C.log_s c reason >> S.TCPV4.close flow in
+
+    let close_conn flow username reason =
+      let message = username ^ " left: " ^ reason ^ "\n" in
+        C.log_s c reason >>
+        return ( Lwt_condition.broadcast messages message ) >>
+        S.TCPV4.close flow in
 
     let write_welcome flow =
       let welcome_message = Cstruct.of_string horse_ascii in
       S.TCPV4.write flow welcome_message >>= function
-        | `Eof -> close_conn flow "write: eof"
-        | `Error _ -> close_conn flow "write: error"
+        | `Eof -> close_conn flow "(unknown)" "write: eof"
+        | `Error _ -> close_conn flow "(unknown)" "write: error"
         | `Ok () -> return () in
 
     let rec read_input username flow =
       S.TCPV4.read flow >>= function
-        | `Eof -> close_conn flow "read: eof"
-        | `Error _ -> close_conn flow "read: error"
+        | `Eof -> close_conn flow username "read: eof"
+        | `Error _ -> close_conn flow username "read: error"
         | `Ok buf -> let message = Cstruct.to_string buf in
           return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ) ) >>
           read_input username flow in
 
-    let rec handle_message flow = Lwt_condition.wait messages >>=
+    let rec handle_message username flow = Lwt_condition.wait messages >>=
       fun message -> S.TCPV4.write flow ( Cstruct.of_string message )  >>= function
-        | `Eof -> close_conn flow "read: eof"
-        | `Error _ -> close_conn flow "read: error"
-        | `Ok () -> handle_message flow in
+        | `Eof -> close_conn flow username "read: eof"
+        | `Error _ -> close_conn flow username "read: error"
+        | `Ok () -> handle_message username flow in
 
     let main flow =
       S.TCPV4.read flow >>= function
-        | `Eof -> close_conn flow "eof"
-        | `Error _ -> close_conn flow "error"
+        | `Eof -> close_conn flow "(unknown)" "read: eof"
+        | `Error _ -> close_conn flow "(unknown)" "read: error"
         | `Ok buf -> let username = String.trim ( Cstruct.to_string buf ) in
           C.log_s c ( username ^ " joined" ) >>
           return ( Lwt_condition.broadcast messages (username ^ " joined\n" ) ) >>
-          join [ read_input username flow; handle_message flow ] in
+          join [ read_input username flow; handle_message username flow ] in
 
     C.log c "HorseOS is starting.";
 
