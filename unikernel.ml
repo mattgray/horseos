@@ -31,8 +31,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
     let rec handle_message flow = Lwt_condition.wait messages >>=
       fun message -> S.TCPV4.write flow ( Cstruct.of_string message )  >>= function
-        | `Eof -> close_conn flow "eof"
-        | `Error _ -> close_conn flow "error"
+        | `Eof -> close_conn flow "read: eof"
+        | `Error _ -> close_conn flow "read: error"
         | `Ok () -> handle_message flow in
 
     let main flow =
@@ -40,6 +40,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Eof -> close_conn flow "eof"
         | `Error _ -> close_conn flow "error"
         | `Ok buf -> let username = String.trim ( Cstruct.to_string buf ) in
+          C.log_s c ( username ^ " joined" ) >>
           return ( Lwt_condition.broadcast messages (username ^ " joined\n" ) ) >>
           join [ read_input username flow; handle_message flow ] in
 
