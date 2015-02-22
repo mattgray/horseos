@@ -25,7 +25,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow "read: eof"
         | `Error _ -> close_conn flow "read: error"
-        | `Ok buf -> C.log_s c username >> let message = Cstruct.to_string buf in
+        | `Ok buf -> let message = Cstruct.to_string buf in
           return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ) ) >>
           read_input username flow in
 
