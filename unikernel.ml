@@ -1,4 +1,5 @@
 open Lwt
+open Core.Std
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
@@ -9,6 +10,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       let dst, dst_port = S.TCPV4.get_dest flow in
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
       C.log_s c message in
+
+    let clean_buf = fun buf -> String.filter ( Cstruct.to_string buf ) ~f:( fun x -> ( Char.to_int x ) < 31 ) in
 
     let messages = Lwt_condition.create () in
 
@@ -29,8 +32,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow username "read: eof"
         | `Error _ -> close_conn flow username "read: error"
-        | `Ok buf -> let message = Cstruct.to_string buf in
-          return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ) ) >>
+        | `Ok buf -> let message = (clean_buf buf ) in
+          return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n") ) >>
           read_input username flow in
 
     let rec handle_message username flow = Lwt_condition.wait messages >>=
@@ -43,7 +46,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow "(unknown)" "read: eof"
         | `Error _ -> close_conn flow "(unknown)" "read: error"
-        | `Ok buf -> let username = String.trim ( Cstruct.to_string buf ) in
+        | `Ok buf -> let username = ( clean_buf buf ) in
           C.log_s c ( username ^ " joined" ) >>
           return ( Lwt_condition.broadcast messages (username ^ " joined\n" ) ) >>
           join [ read_input username flow; handle_message username flow ] in
