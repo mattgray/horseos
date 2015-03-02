@@ -1,5 +1,4 @@
 open Lwt
-open Core.Std
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
@@ -11,7 +10,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
       C.log_s c message in
 
-    let clean_buf = fun buf -> String.filter ( Cstruct.to_string buf ) ~f:( fun x -> ( Char.to_int x ) < 31 ) in
+    let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped in
 
     let messages = Lwt_condition.create () in
 
