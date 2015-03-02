@@ -31,7 +31,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow username "read: eof"
         | `Error _ -> close_conn flow username "read: error"
-        | `Ok buf -> let message = (clean_buf buf ) in
+        | `Ok buf -> let message = ( clean_buf buf ) in
           if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n");
           read_input username flow in
 
@@ -45,11 +45,14 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow "(unknown)" "read: eof"
         | `Error _ -> close_conn flow "(unknown)" "read: error"
-        | `Ok buf -> 
+        | `Ok buf ->
           let username = ( clean_buf buf ) in
-          C.log c ( username ^ " joined" );
-          Lwt_condition.broadcast messages (username ^ " joined\n" );
-          join [ read_input username flow; handle_message username flow ] in
+          if Cstruct.get_uint8 buf 0 == 255 then close_conn flow "(unknown)" "we dont negotiate telnet options" else
+          (
+            C.log c ( username ^ " joined" );
+            Lwt_condition.broadcast messages (username ^ " joined\n" );
+            join [ read_input username flow; handle_message username flow ]
+          ) in
 
     C.log c "HorseOS is starting.";
 
