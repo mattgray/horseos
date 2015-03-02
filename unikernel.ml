@@ -16,9 +16,9 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
     let close_conn flow username reason =
       let message = username ^ " left: " ^ reason ^ "\n" in
-        C.log_s c reason >>
-        return ( Lwt_condition.broadcast messages message ) >>
-        S.TCPV4.close flow in
+      C.log c reason;
+      Lwt_condition.broadcast messages message;
+      S.TCPV4.close flow in
 
     let write_welcome flow =
       let welcome_message = Cstruct.of_string horse_ascii in
@@ -33,7 +33,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Error _ -> close_conn flow username "read: error"
         | `Ok buf -> let message = (clean_buf buf ) in
           if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n");
-          return () >> read_input username flow in
+          read_input username flow in
 
     let rec handle_message username flow = Lwt_condition.wait messages >>=
       fun message -> S.TCPV4.write flow ( Cstruct.of_string message )  >>= function
@@ -45,9 +45,10 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow "(unknown)" "read: eof"
         | `Error _ -> close_conn flow "(unknown)" "read: error"
-        | `Ok buf -> let username = ( clean_buf buf ) in
-          C.log_s c ( username ^ " joined" ) >>
-          return ( Lwt_condition.broadcast messages (username ^ " joined\n" ) ) >>
+        | `Ok buf -> 
+          let username = ( clean_buf buf ) in
+          C.log c ( username ^ " joined" );
+          Lwt_condition.broadcast messages (username ^ " joined\n" );
           join [ read_input username flow; handle_message username flow ] in
 
     C.log c "HorseOS is starting.";
