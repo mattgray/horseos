@@ -2,6 +2,7 @@
 Makefile
 _build/
 horseos.xe
+mir-horseos.xen
 horseos.xl
 horseos_libvirt.xml
 log
