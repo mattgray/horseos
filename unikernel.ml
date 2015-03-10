@@ -14,9 +14,12 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
     let messages = Lwt_condition.create () in
 
+    let users = Hashtbl.create 10 in
+
     let close_conn flow username reason =
       let message = username ^ " left: " ^ reason ^ "\n" in
       C.log c reason;
+      Hashtbl.remove users username;
       Lwt_condition.broadcast messages message;
       S.TCPV4.close flow in
 
@@ -41,6 +44,13 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Error _ -> close_conn flow username "read: error"
         | `Ok () -> handle_message username flow in
 
+    let write_userinfo username flow =
+      let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
+      S.TCPV4.write flow ( Cstruct.of_string user_message )  >>= function
+        | `Eof -> close_conn flow username "read: eof"
+        | `Error _ -> close_conn flow username "read: error"
+        | `Ok () ->  return () in
+
     let main flow =
       S.TCPV4.read flow >>= function
         | `Eof -> close_conn flow "(unknown)" "read: eof"
@@ -49,8 +59,10 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           let username = ( clean_buf buf ) in
           if Cstruct.get_uint8 buf 0 == 255 then close_conn flow "(unknown)" "we dont negotiate telnet options" else
           (
+            Hashtbl.add users username ();
             C.log c ( username ^ " joined" );
             Lwt_condition.broadcast messages (username ^ " joined\n" );
+            write_userinfo username flow >>
             join [ read_input username flow; handle_message username flow ]
           ) in
 
