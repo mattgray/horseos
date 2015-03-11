@@ -1,7 +1,7 @@
 HorseOS
 =======
 
-Silly "operating system" to help learning OCaml and MirageOS (http://openmirage.org)
+Horsing around with OCaml and MirageOS (http://openmirage.org)
 
 Features
 --------
