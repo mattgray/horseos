@@ -59,11 +59,17 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           let username = ( clean_buf buf ) in
           if Cstruct.get_uint8 buf 0 == 255 then close_conn flow "(unknown)" "we dont negotiate telnet options" else
           (
-            Hashtbl.add users username ();
-            C.log c ( username ^ " joined" );
-            Lwt_condition.broadcast messages (username ^ " joined\n" );
-            write_userinfo username flow >>
-            join [ read_input username flow; handle_message username flow ]
+            if Hashtbl.mem users username then
+              S.TCPV4.write flow ( Cstruct.of_string ( "There's already a user called " ^ username ^ " please try again.\n" ) )
+                >> close_conn flow "(unknown)" "bad username"
+            else
+            (
+              Hashtbl.add users username ();
+              C.log c ( username ^ " joined" );
+              Lwt_condition.broadcast messages (username ^ " joined\n" );
+              write_userinfo username flow >>
+              join [ read_input username flow; handle_message username flow ]
+            )
           ) in
 
     C.log c "HorseOS is starting.";
