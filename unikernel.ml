@@ -43,14 +43,6 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( session.name ^ ": " ^ message ^ "\n");
           listen_input session in
 
-    let rec read_input username flow =
-      S.TCPV4.read flow >>= function
-        | `Eof -> close_conn flow username "read: eof"
-        | `Error _ -> close_conn flow username "read: error"
-        | `Ok buf -> let message = ( clean_buf buf ) in
-          if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n");
-          read_input username flow in
-
     let rec handle_message session = Lwt_condition.wait messages >>=
       fun message -> S.TCPV4.write session.flow ( Cstruct.of_string message )  >>= function
         | `Eof -> close_conn session.flow session.name "read: eof"
