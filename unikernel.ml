@@ -1,20 +1,20 @@
 open Lwt
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
+    
+  let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /\\______      ___\\    /\\  :\n| /   __-@@\\_/   ------    |  |   \\ \\\n |   -  -   \\               | |     \\ )\n |  |   -  | \\              | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
+ 
+  let messages = Lwt_condition.create ()
 
+  let users = Hashtbl.create 10
+
+  let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped
+  
   let start c s =
-    let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /\\______      ___\\    /\\  :\n| /   __-@@\\_/   ------    |  |   \\ \\\n |   -  -   \\               | |     \\ )\n |  |   -  | \\              | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: " in
-
     let log_conn flow =
       let dst, dst_port = S.TCPV4.get_dest flow in
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
       C.log_s c message in
-
-    let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped in
-
-    let messages = Lwt_condition.create () in
-
-    let users = Hashtbl.create 10 in
 
     let close_conn flow username reason =
       let message = username ^ " left: " ^ reason ^ "\n" in
