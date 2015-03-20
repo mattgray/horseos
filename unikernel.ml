@@ -51,11 +51,11 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n");
           read_input username flow in
 
-    let rec handle_message username flow = Lwt_condition.wait messages >>=
-      fun message -> S.TCPV4.write flow ( Cstruct.of_string message )  >>= function
-        | `Eof -> close_conn flow username "read: eof"
-        | `Error _ -> close_conn flow username "read: error"
-        | `Ok () -> handle_message username flow in
+    let rec handle_message session = Lwt_condition.wait messages >>=
+      fun message -> S.TCPV4.write session.flow ( Cstruct.of_string message )  >>= function
+        | `Eof -> close_conn session.flow session.name "read: eof"
+        | `Error _ -> close_conn session.flow session.name "read: error"
+        | `Ok () -> handle_message session in
 
     let write_userinfo username flow =
       let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
@@ -82,7 +82,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
               C.log c ( username ^ " joined" );
               Lwt_condition.broadcast messages (username ^ " joined\n" );
               write_userinfo username flow >>
-              join [ listen_input session; handle_message username flow ]
+              join [ listen_input session; handle_message session ]
             )
           ) in
 
