@@ -3,7 +3,9 @@ open Lwt
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     
   let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /\\______      ___\\    /\\  :\n| /   __-@@\\_/   ------    |  |   \\ \\\n |   -  -   \\               | |     \\ )\n |  |   -  | \\              | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
- 
+
+  type session = { name : string; flow : S.TCPV4.flow }
+
   let messages = Lwt_condition.create ()
 
   let users = Hashtbl.create 10
@@ -32,6 +34,14 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Eof -> close_conn flow "(unknown)" "write: eof"
         | `Error _ -> close_conn flow "(unknown)" "write: error"
         | `Ok () -> return () in
+
+    let rec listen_input session =
+      S.TCPV4.read session.flow >>= function
+        | `Eof -> close_conn session.flow session.name "read: eof"
+        | `Error _ -> close_conn session.flow session.name "read: error"
+        | `Ok buf -> let message = ( clean_buf buf ) in
+          if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( session.name ^ ": " ^ message ^ "\n");
+          listen_input session in
 
     let rec read_input username flow =
       S.TCPV4.read flow >>= function
@@ -67,11 +77,12 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
                 >> close_conn flow "(unknown)" "bad username"
             else
             (
-              Hashtbl.add users username ();
+              let session = { name = username; flow = flow } in
+              Hashtbl.add users username session;
               C.log c ( username ^ " joined" );
               Lwt_condition.broadcast messages (username ^ " joined\n" );
               write_userinfo username flow >>
-              join [ read_input username flow; handle_message username flow ]
+              join [ listen_input session; handle_message username flow ]
             )
           ) in
 
