@@ -9,19 +9,22 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
   let users = Hashtbl.create 10
 
   let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped
-  
-  let start c s =
-    let log_conn flow =
+
+  let log_conn c flow =
       let dst, dst_port = S.TCPV4.get_dest flow in
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
-      C.log_s c message in
+      C.log_s c message
 
-    let close_conn flow username reason =
+  let close_conn c flow username reason =
       let message = username ^ " left: " ^ reason ^ "\n" in
       C.log c reason;
       Hashtbl.remove users username;
       Lwt_condition.broadcast messages message;
-      S.TCPV4.close flow in
+      S.TCPV4.close flow
+ 
+  let start c s =
+    let log_conn = log_conn c in
+    let close_conn = close_conn c in
 
     let write_welcome flow =
       let welcome_message = Cstruct.of_string horse_ascii in
