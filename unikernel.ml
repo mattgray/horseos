@@ -5,7 +5,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
   let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /\\______      ___\\    /\\  :\n| /   __-@@\\_/   ------    |  |   \\ \\\n |   -  -   \\               | |     \\ )\n |  |   -  | \\              | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
 
   module Username = struct
-    type username = | Known of string | Unknown
+    type t = | Known of string | Unknown
     let unknown = Unknown
     let of_string s = Known s
     let to_string u =
@@ -14,7 +14,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | Known s -> s
   end
 
-  type session = { name : Username.username; flow : S.TCPV4.flow }
+  type session = { name : Username.t; flow : S.TCPV4.flow }
 
   let messages = Lwt_condition.create ()
 
