@@ -49,11 +49,11 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Error _ -> close_conn session.flow session.name "read: error"
         | `Ok () -> broadcast_chats session in
 
-    let write_userinfo username flow =
+    let write_userinfo session =
       let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
-      S.TCPV4.write flow ( Cstruct.of_string user_message )  >>= function
-        | `Eof -> close_conn flow username "read: eof"
-        | `Error _ -> close_conn flow username "read: error"
+      S.TCPV4.write session.flow ( Cstruct.of_string user_message ) >>= function
+        | `Eof -> close_conn session.flow session.name "read: eof"
+        | `Error _ -> close_conn session.flow session.name "read: error"
         | `Ok () ->  return () in
 
     let main flow =
@@ -73,7 +73,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
               Hashtbl.add users username session;
               C.log c ( username ^ " joined" );
               Lwt_condition.broadcast messages (username ^ " joined\n" );
-              write_userinfo username flow >>
+              write_userinfo session >>
               join [ listen_input session; broadcast_chats session ]
             )
           ) in
