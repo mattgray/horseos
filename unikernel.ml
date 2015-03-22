@@ -33,17 +33,19 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       Hashtbl.remove users ( Username.to_string session.name );
       Lwt_condition.broadcast messages message;
       S.TCPV4.close session.flow
+
+  let write close_conn session message =
+    S.TCPV4.write session.flow message >>= function
+        | `Eof -> close_conn session "write: eof"
+        | `Error _ -> close_conn session "write: error"
+        | `Ok () -> return ()
  
   let start c s =
     let log_conn = log_conn c in
     let close_conn = close_conn c in
+    let write = write close_conn in
 
-    let write_welcome session =
-      let welcome_message = Cstruct.of_string horse_ascii in
-      S.TCPV4.write session.flow welcome_message >>= function
-        | `Eof -> close_conn session "write: eof"
-        | `Error _ -> close_conn session "write: error"
-        | `Ok () -> return () in
+    let write_welcome session = write session ( Cstruct.of_string horse_ascii ) in
 
     let rec listen_input session =
       S.TCPV4.read session.flow >>= function
