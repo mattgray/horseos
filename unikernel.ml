@@ -39,23 +39,29 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         | `Eof -> close_conn session "write: eof"
         | `Error _ -> close_conn session "write: error"
         | `Ok () -> return ()
- 
+
+  let read close_conn session with_message =
+    S.TCPV4.read session.flow >>= function
+      | `Eof -> close_conn session "read: eof"
+      | `Error _ -> close_conn session "read: error"
+      | `Ok buf -> match ( Cstruct.get_uint8 buf 0 , Cstruct.get_uint8 buf 1 ) with
+        | (255, 244) -> close_conn session "quit"
+        | (255, _) -> return ()
+        | _ -> return ( with_message ( clean_buf buf ) )
+
   let start c s =
     let log_conn = log_conn c in
     let close_conn = close_conn c in
     let write = write close_conn in
+    let read = read close_conn in
 
     let write_welcome session = write session horse_ascii in
 
     let rec listen_input session =
-      S.TCPV4.read session.flow >>= function
-        | `Eof -> close_conn session "read: eof"
-        | `Error _ -> close_conn session "read: error"
-        | `Ok buf -> let message = ( clean_buf buf ) in
-          if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n");
-          listen_input session in
+      let broadcast message = Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n") in
+      read session broadcast >> listen_input session in
 
-    let rec broadcast_chats session =
+  let rec broadcast_chats session =
       Lwt_condition.wait messages
       >>= fun message -> write session message
       >> broadcast_chats session in
