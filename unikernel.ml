@@ -35,7 +35,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       S.TCPV4.close session.flow
 
   let write close_conn session message =
-    S.TCPV4.write session.flow message >>= function
+    S.TCPV4.write session.flow ( Cstruct.of_string message ) >>= function
         | `Eof -> close_conn session "write: eof"
         | `Error _ -> close_conn session "write: error"
         | `Ok () -> return ()
@@ -45,7 +45,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     let close_conn = close_conn c in
     let write = write close_conn in
 
-    let write_welcome session = write session ( Cstruct.of_string horse_ascii ) in
+    let write_welcome session = write session horse_ascii in
 
     let rec listen_input session =
       S.TCPV4.read session.flow >>= function
