@@ -63,10 +63,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
     let write_userinfo session =
       let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
-      S.TCPV4.write session.flow ( Cstruct.of_string user_message ) >>= function
-        | `Eof -> close_conn session "read: eof"
-        | `Error _ -> close_conn session "read: error"
-        | `Ok () ->  return () in
+      write session user_message in
 
     let main session_initial =
       S.TCPV4.read session_initial.flow >>= function
