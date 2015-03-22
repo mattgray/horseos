@@ -55,11 +55,10 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           if Cstruct.get_uint8 buf 0 != 255 then Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n");
           listen_input session in
 
-    let rec broadcast_chats session = Lwt_condition.wait messages >>=
-      fun message -> S.TCPV4.write session.flow ( Cstruct.of_string message )  >>= function
-        | `Eof -> close_conn session "read: eof"
-        | `Error _ -> close_conn session "read: error"
-        | `Ok () -> broadcast_chats session in
+    let rec broadcast_chats session =
+      Lwt_condition.wait messages
+      >>= fun message -> write session message
+      >> broadcast_chats session in
 
     let write_userinfo session =
       let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
@@ -74,8 +73,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           if Cstruct.get_uint8 buf 0 == 255 then close_conn session_initial "we dont negotiate telnet options" else
           (
             if Hashtbl.mem users username then
-              S.TCPV4.write session_initial.flow ( Cstruct.of_string ( "There's already a user called " ^ username ^ " please try again.\n" ) )
-                >> close_conn session_initial "bad username"
+              write session_initial ( "There's already a user called " ^ username ^ " please try again.\n" )
+              >> close_conn session_initial "bad username"
             else
             (
               let session = { name = Username.of_string username; flow = session_initial.flow } in
