@@ -47,7 +47,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       | `Ok buf -> match ( Cstruct.get_uint8 buf 0 , Cstruct.get_uint8 buf 1 ) with
         | (255, 244) -> close_conn session "quit"
         | (255, _) -> return ()
-        | _ -> return ( with_message ( clean_buf buf ) )
+        | _ -> with_message ( clean_buf buf )
 
   let start c s =
     let log_conn = log_conn c in
@@ -58,7 +58,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     let write_welcome session = write session horse_ascii in
 
     let rec listen_input session =
-      let broadcast message = Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n") in
+      let broadcast message = return ( Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n") ) in
       read session broadcast >> listen_input session in
 
   let rec broadcast_chats session =
@@ -71,34 +71,28 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       write session user_message in
 
     let main session_initial =
-      S.TCPV4.read session_initial.flow >>= function
-        | `Eof -> close_conn session_initial "read: eof"
-        | `Error _ -> close_conn session_initial "read: error"
-        | `Ok buf ->
-          let username = ( clean_buf buf ) in
-          if Cstruct.get_uint8 buf 0 == 255 then close_conn session_initial "we dont negotiate telnet options" else
-          (
-            if Hashtbl.mem users username then
-              write session_initial ( "There's already a user called " ^ username ^ " please try again.\n" )
-              >> close_conn session_initial "bad username"
-            else
-            (
-              let session = { name = Username.of_string username; flow = session_initial.flow } in
-              Hashtbl.add users username session;
-              C.log c ( username ^ " joined" );
-              Lwt_condition.broadcast messages (username ^ " joined\n" );
-              write_userinfo session >>
-              join [ listen_input session; broadcast_chats session ]
-            )
-          ) in
+      read session_initial ( fun username ->
+        if Hashtbl.mem users username then
+          write session_initial ( "There's already a user called " ^ username ^ " please try again.\n" )
+          >> close_conn session_initial "bad username"
+        else
+        (
+          let session = { name = Username.of_string username; flow = session_initial.flow } in
+          Hashtbl.add users username session;
+          C.log c ( username ^ " joined" );
+          Lwt_condition.broadcast messages (username ^ " joined\n" );
+          write_userinfo session
+          >> join [ listen_input session; broadcast_chats session ]
+        )
+      ) in
 
     C.log c "HorseOS is starting.";
 
     S.listen_tcpv4 s ~port:4444 (fun flow ->
       let session_initial = { flow = flow; name = Username.unknown } in
       log_conn session_initial 
-        >> write_welcome session_initial
-        >> main session_initial
+      >> write_welcome session_initial
+      >> main session_initial
     );
 
     S.listen s;
