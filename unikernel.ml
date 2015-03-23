@@ -61,10 +61,10 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       let broadcast message = return ( Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n") ) in
       read session broadcast >> listen_input session in
 
-  let rec broadcast_chats session =
+  let rec relay_messages session =
       Lwt_condition.wait messages
       >>= fun message -> write session message
-      >> broadcast_chats session in
+      >> relay_messages session in
 
     let write_userinfo session =
       let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
@@ -82,7 +82,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           C.log c ( username ^ " joined" );
           Lwt_condition.broadcast messages (username ^ " joined\n" );
           write_userinfo session
-          >> join [ listen_input session; broadcast_chats session ]
+          >> join [ listen_input session; relay_messages session ]
         )
       ) in
 
