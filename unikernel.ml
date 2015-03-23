@@ -63,7 +63,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       let broadcast message = return ( Lwt_condition.broadcast messages ( ( Username.to_string session.name ) ^ ": " ^ message ^ "\n") ) in
       read session broadcast >> listen_input session in
 
-  let rec relay_messages session =
+    let rec relay_messages session =
       Lwt_condition.wait messages
       >>= fun message -> write session message
       >> relay_messages session in
