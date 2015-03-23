@@ -44,9 +44,9 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     S.TCPV4.read session.flow >>= function
       | `Eof -> close_conn session "read: eof"
       | `Error _ -> close_conn session "read: error"
-      | `Ok buf -> match ( Cstruct.get_uint8 buf 0 , Cstruct.get_uint8 buf 1 ) with
-        | (255, 244) -> close_conn session "quit"
-        | (255, _) -> return ()
+      | `Ok buf -> match Cstruct.get_uint8 buf 0, Cstruct.get_uint8 buf 1 with
+        | 255, 244 -> close_conn session "quit"
+        | 255, _ -> return ()
         | _ -> match clean_buf buf with
           | "" -> return ()
           | m -> with_message m
