@@ -47,7 +47,9 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       | `Ok buf -> match ( Cstruct.get_uint8 buf 0 , Cstruct.get_uint8 buf 1 ) with
         | (255, 244) -> close_conn session "quit"
         | (255, _) -> return ()
-        | _ -> with_message ( clean_buf buf )
+        | _ -> match clean_buf buf with
+          | "" -> return ()
+          | m -> with_message m
 
   let start c s =
     let log_conn = log_conn c in
