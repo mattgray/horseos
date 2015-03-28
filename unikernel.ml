@@ -22,14 +22,16 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped
 
-  let log_conn c session =
+  let logger c message = C.log c message
+
+  let log_conn log session =
       let dst, dst_port = S.TCPV4.get_dest session.flow in
       let message = Printf.sprintf ("Got a connection from %s on port %d") (Ipaddr.V4.to_string dst) dst_port in
-      C.log_s c message
+      log message; return ()
 
-  let close_conn c session reason =
+  let close_conn log session reason =
       let message = ( Username.to_string session.name ) ^ " left: " ^ reason ^ "\n" in
-      C.log c reason;
+      log reason;
       Hashtbl.remove users ( Username.to_string session.name );
       Lwt_condition.broadcast messages message;
       S.TCPV4.close session.flow
@@ -38,7 +40,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     S.TCPV4.write session.flow ( Cstruct.of_string message ) >>= function
         | `Eof -> close_conn session "write: eof"
         | `Error _ -> close_conn session "write: error"
-        | `Ok () -> return ()
+        | `Ok () -> Lwt.return_unit
 
   let read close_conn session with_message =
     S.TCPV4.read session.flow >>= function
@@ -52,8 +54,9 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           | m -> with_message m
 
   let start c s =
-    let log_conn = log_conn c in
-    let close_conn = close_conn c in
+    let logger = logger c in
+    let log_conn = log_conn logger in
+    let close_conn = close_conn logger in
     let write = write close_conn in
     let read = read close_conn in
 
@@ -81,14 +84,14 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
         (
           let session = { session_initial with name = Username.of_string username } in
           Hashtbl.add users username session;
-          C.log c ( username ^ " joined" );
+          logger ( username ^ " joined" );
           Lwt_condition.broadcast messages (username ^ " joined\n" );
           write_userinfo session
           >> join [ listen_input session; relay_messages session ]
         )
       ) in
 
-    C.log c "HorseOS is starting.";
+    logger "HorseOS is starting.";
 
     S.listen_tcpv4 s ~port:4444 (fun flow ->
       let session_initial = { flow = flow; name = Username.unknown } in
