@@ -79,7 +79,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           >> close_conn session_initial "bad username"
         else
         (
-          let session = { name = Username.of_string username; flow = session_initial.flow } in
+          let session = { session_initial with name = Username.of_string username } in
           Hashtbl.add users username session;
           C.log c ( username ^ " joined" );
           Lwt_condition.broadcast messages (username ^ " joined\n" );
