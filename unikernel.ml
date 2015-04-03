@@ -114,7 +114,9 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           >> Session.close session_initial "bad username"
         else
         (
-          let session = Session.on_close session_initial ( fun reason -> Lwt_condition.broadcast messages ( username ^ " has quit (" ^ reason ^  ")\n") ) in
+          let on_close reason = ( Lwt_condition.broadcast messages ( username ^ " has quit (" ^ reason ^  ")\n" );
+                                  Hashtbl.remove users username ) in
+          let session = Session.on_close session_initial on_close in
           Hashtbl.add users username session;
           logger ( username ^ " joined" );
           Lwt_condition.broadcast messages (username ^ " joined\n" );
