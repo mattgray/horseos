@@ -9,6 +9,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
     val of_flow : S.TCPV4.flow -> t
 
+    val on_close : t -> ( string -> unit ) -> t
+
     val close : t -> string -> unit Lwt.t
 
     val write : t -> string -> unit Lwt.t
@@ -17,11 +19,14 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   end = struct
     
-    type t = { flow: S.TCPV4.flow }
+    type t = { flow: S.TCPV4.flow; on_close: ( string -> unit ) }
 
-    let of_flow f = { flow = f }
+    let of_flow f = { flow = f; on_close = fun _ -> () }
+
+    let on_close session closer = { session with on_close = closer }
 
     let close session reason =
+      session.on_close reason;
       S.TCPV4.close session.flow
 
     let write session message =
@@ -109,7 +114,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           >> Session.close session_initial "bad username"
         else
         (
-          let session = session_initial in
+          let session = Session.on_close session_initial ( fun reason -> Lwt_condition.broadcast messages ( username ^ " has quit (" ^ reason ^  ")\n") ) in
           Hashtbl.add users username session;
           logger ( username ^ " joined" );
           Lwt_condition.broadcast messages (username ^ " joined\n" );
