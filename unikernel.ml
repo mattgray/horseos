@@ -1,52 +1,9 @@
 open Lwt
+open Session
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     
   let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /\\______      ___\\    /\\  :\n| /   __-@@\\_/   ------    |  |   \\ \\\n |   -  -   \\               | |     \\ )\n |  |   -  | \\              | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
-
-  module Session : sig
-    type t
-
-    val of_flow : S.TCPV4.flow -> t
-
-    val on_close : t -> ( string -> unit ) -> t
-
-    val close : t -> string -> unit Lwt.t
-
-    val write : t -> string -> unit Lwt.t
-
-    val read : t -> ( string -> unit Lwt.t ) ->  unit Lwt.t
-
-  end = struct
-    
-    type t = { flow: S.TCPV4.flow; on_close: ( string -> unit ) }
-
-    let of_flow f = { flow = f; on_close = fun _ -> () }
-
-    let on_close session closer = { session with on_close = closer }
-
-    let close session reason =
-      session.on_close reason;
-      S.TCPV4.close session.flow
-
-    let write session message =
-      S.TCPV4.write session.flow ( Cstruct.of_string message ) >>= function
-        | `Eof -> close session "write: eof"
-        | `Error _ -> close session "write: error"
-        | `Ok () -> Lwt.return_unit
-
-    let read session message_handler =
-      let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped in
-      S.TCPV4.read session.flow >>= function
-        | `Eof -> close session "read: eof"
-        | `Error _ -> close session "read: error"
-        | `Ok buf -> match Cstruct.get_uint8 buf 0, Cstruct.get_uint8 buf 1 with
-          | 255, 244 -> close session "quit"
-          | 255, _ -> return ()
-          | _ -> match clean_buf buf with
-            | "" -> return ()
-            | m -> message_handler m
-  end
 
   let messages = Lwt_condition.create ()
 
