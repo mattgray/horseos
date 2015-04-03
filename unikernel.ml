@@ -15,27 +15,32 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
   end
 
   module Session : sig
-    type flow = S.TCPV4.flow
-    type t = { name : Username.t; flow: flow }
-    val name : t -> Username.t
-    val of_flow : flow -> t
-    val set_name : t -> Username.t -> t
+
+    type t = { flow: S.TCPV4.flow }
+
+    val of_flow : S.TCPV4.flow -> t
+
     val close : t -> string -> unit Lwt.t
+
     val write : t -> string -> unit Lwt.t
+
     val read : t -> ( string -> unit Lwt.t ) ->  unit Lwt.t
+
   end = struct
-    type flow = S.TCPV4.flow
-    type t = { name : Username.t; flow: S.TCPV4.flow }
-    let name session = session.name
-    let of_flow flow = { name = Username.unknown; flow = flow }
-    let set_name session name = { session with name }
+    
+    type t = { flow: S.TCPV4.flow }
+
+    let of_flow f = { flow = f }
+
     let close session reason =
       S.TCPV4.close session.flow
+
     let write session message =
       S.TCPV4.write session.flow ( Cstruct.of_string message ) >>= function
         | `Eof -> close session "write: eof"
         | `Error _ -> close session "write: error"
         | `Ok () -> Lwt.return_unit
+
     let read session message_handler =
       let clean_buf buf = Cstruct.to_string buf |> String.trim |> String.escaped in
       S.TCPV4.read session.flow >>= function
@@ -95,9 +100,9 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 *)
     let write_welcome session = Session.write session horse_ascii in
 
-    let rec listen_input session =
-      let broadcast message = return ( Lwt_condition.broadcast messages ( ( Username.to_string ( Session.name session ) ) ^ ": " ^ message ^ "\n") ) in
-      Session.read session broadcast >> listen_input session in
+    let rec listen_input session username =
+      let broadcast message = return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n") )  in
+      Session.read session broadcast >> listen_input session username in
 
     let rec relay_messages session =
       Lwt_condition.wait messages
@@ -115,12 +120,12 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
           >> Session.close session_initial "bad username"
         else
         (
-          let session = Session.set_name session_initial ( Username.of_string username ) in
+          let session = session_initial in
           Hashtbl.add users username session;
           logger ( username ^ " joined" );
           Lwt_condition.broadcast messages (username ^ " joined\n" );
           write_userinfo session
-          >> join [ listen_input session; relay_messages session ]
+          >> join [ listen_input session username; relay_messages session ]
         )
       ) in
 
