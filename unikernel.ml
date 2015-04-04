@@ -5,6 +5,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     
   let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /\\______      ___\\    /\\  :\n| /   __-@@\\_/   ------    |  |   \\ \\\n |   -  -   \\               | |     \\ )\n |  |   -  | \\              | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
 
+  module Session = Session.Tcp(S)
+
   let messages = Lwt_condition.create ()
 
   let users = Hashtbl.create 10
@@ -15,7 +17,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     let write_welcome session = Session.write session horse_ascii in
 
     let rec listen_input session username =
-      let broadcast message = return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n") )  in
+      let broadcast message = return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n") ) in
       Session.read session broadcast >> listen_input session username in
 
     let rec relay_messages session =
