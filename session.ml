@@ -1,4 +1,6 @@
-type t = { flow: S.TCPV4.flow; on_close: ( string -> unit ) }
+open V1_LWT
+
+type t = { flow: V1_LWT.STACKV4.TCPV4.flow; on_close: ( string -> unit ) }
 
 let of_flow f = { flow = f; on_close = fun _ -> () }
 
