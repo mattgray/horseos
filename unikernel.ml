@@ -41,13 +41,12 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
               let message = ( username ^ " has quit (" ^ reason ^  ")\n" ) in
                 log message;
                 Lwt_condition.broadcast messages ( username ^ " has quit (" ^ reason ^  ")\n" );
-                Hashtbl.remove users username
-              in
-          let session = Session.on_close session_initial on_close in
-          Hashtbl.add users username session;
-          log ( username ^ " joined" );
-          Lwt_condition.broadcast messages (username ^ " joined\n" );
-          write_userinfo session
+                Hashtbl.remove users username in
+            let session = Session.on_close session_initial on_close in
+              Hashtbl.add users username session;
+              log ( username ^ " joined" );
+              Lwt_condition.broadcast messages (username ^ " joined\n" );
+              write_userinfo session
           >> join [ listen_input session username; relay_messages session ]
         )
       ) in
