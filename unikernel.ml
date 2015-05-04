@@ -7,45 +7,65 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   module Horse_greeter = struct
     let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /--______      ___\\    /\\  :\n| /   __-  - _/   ------    |  |   \\ \\\n |   -  -   /                | |     \\ )\n |  |   -  |                 | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
+
     let greet session = Session.write session horse_ascii
   end
 
-  let messages = Lwt_condition.create ()
+  module Horse_manager = struct
 
-  let users = Hashtbl.create 10
+    type t = { messages : bytes Lwt_condition.t; users : (bytes, unit) Hashtbl.t }
+
+    let create = { messages = Lwt_condition.create () ; users = Hashtbl.create 10 }
+
+    let broadcast_message os username message =
+      Lwt_condition.broadcast (os.messages) (Printf.sprintf "%s: %s\n" username message);
+      Lwt.return_unit
+
+    let wait_for_messages os = Lwt_condition.wait os.messages
+
+    let get_userinfo os = Hashtbl.fold ( fun user _ acc -> Printf.sprintf "%s * %s \n" acc user ) os.users "Horses in the stable:\n"
+
+    let user_exists os username = Hashtbl.mem os.users username
+
+    let remove_user os username =
+      Lwt_condition.broadcast os.messages "%s has quit...\n";
+      Hashtbl.remove os.users username
+
+    let add_user os username =
+      Hashtbl.add os.users username ();
+      Lwt_condition.broadcast os.messages (Printf.sprintf "%s joined\n" username)
+
+  end
+
+  let horseos = Horse_manager.create
 
   let start c s =
+
     let log message = C.log c message in
 
     let rec listen_input session username =
-      let broadcast message = return ( Lwt_condition.broadcast messages ( username ^ ": " ^ message ^ "\n") ) in
-      Session.read session broadcast >> listen_input session username in
+      Session.read session (Horse_manager.broadcast_message horseos username)
+        >> listen_input session username in
 
     let rec relay_messages session =
-      Lwt_condition.wait messages
-      >>= fun message -> Session.write session message
-      >> relay_messages session in
+      Horse_manager.wait_for_messages horseos
+        >>= fun message -> Session.write session message
+        >> relay_messages session in
 
-    let write_userinfo session =
-      let user_message = Hashtbl.fold ( fun u _ s -> s ^ " * " ^ u ^ "\n" ) users "Horses in the stable:\n" in
-      Session.write session user_message in
+    let write_userinfo session = Session.write session (Horse_manager.get_userinfo horseos) in
 
     let main session_initial =
       Session.read session_initial ( fun username ->
-        if Hashtbl.mem users username then
-          Session.write session_initial ( "There's already a user called " ^ username ^ " please try again.\n" )
-          >> Session.close session_initial "bad username"
+        if Horse_manager.user_exists horseos username then
+          Session.write session_initial (Printf.sprintf "There's already a user called %s please try again.\n" username) >>
+          Session.close session_initial "bad username"
         else
         (
-          let on_close reason =
-              let message = ( username ^ " has quit (" ^ reason ^  ")\n" ) in
-                log message;
-                Lwt_condition.broadcast messages ( username ^ " has quit (" ^ reason ^  ")\n" );
-                Hashtbl.remove users username in
+          let on_close reason = log (Printf.sprintf "%s has quit (%s)\n" username reason);
+                Horse_manager.remove_user horseos username in
             let session = Session.on_close session_initial on_close in
-              Hashtbl.add users username session;
-              log ( username ^ " joined" );
-              Lwt_condition.broadcast messages (username ^ " joined\n" );
+              log (Printf.sprintf "%s joined" username);
+              Horse_manager.add_user horseos username;
               write_userinfo session
           >> join [ listen_input session username; relay_messages session ]
         )
