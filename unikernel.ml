@@ -1,5 +1,6 @@
 open Lwt
 open Session
+open Horse_manager
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
@@ -9,32 +10,6 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
     let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /--______      ___\\    /\\  :\n| /   __-  - _/   ------    |  |   \\ \\\n |   -  -   /                | |     \\ )\n |  |   -  |                 | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
 
     let greet session = Session.write session horse_ascii
-  end
-
-  module Horse_manager = struct
-
-    type t = { messages : bytes Lwt_condition.t; users : (bytes, unit) Hashtbl.t }
-
-    let create = { messages = Lwt_condition.create () ; users = Hashtbl.create 10 }
-
-    let broadcast_message os username message =
-      Lwt_condition.broadcast (os.messages) (Printf.sprintf "%s: %s\n" username message);
-      Lwt.return_unit
-
-    let wait_for_messages os = Lwt_condition.wait os.messages
-
-    let get_userinfo os = Hashtbl.fold ( fun user _ acc -> Printf.sprintf "%s * %s \n" acc user ) os.users "Horses in the stable:\n"
-
-    let user_exists os username = Hashtbl.mem os.users username
-
-    let remove_user os username =
-      Lwt_condition.broadcast os.messages "%s has quit...\n";
-      Hashtbl.remove os.users username
-
-    let add_user os username =
-      Hashtbl.add os.users username ();
-      Lwt_condition.broadcast os.messages (Printf.sprintf "%s joined\n" username)
-
   end
 
   let horseos = Horse_manager.create
