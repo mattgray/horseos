@@ -1,16 +1,11 @@
 open Lwt
 open Session
 open Horse_manager
+open Horse_greeter
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   module Session = Session.Tcp(S)
-
-  module Horse_greeter = struct
-    let horse_ascii = "welcome to HorseOS 0.02          |\\    /|\n                              ___| \\,,/_/\n                           ---__/ \\/    \\\n                          __--/     (D)  \\\n                          _ -/    (_      \\\n                         // /       \\_ / ==\\\n   __-------_____--___--/           / \\_ O o)\n  /                                 /   \\==/`\n /                                 /\n||          )                   \\_/\\\n||         /              _      /  |\n| |      /--______      ___\\    /\\  :\n| /   __-  - _/   ------    |  |   \\ \\\n |   -  -   /                | |     \\ )\n |  |   -  |                 | )     | |\n  | |    | |                 | |    | |\n  | |    < |                 | |   |_/\n  < |    /__\\                <  \\\n  /__\\                       /___\\\n\nplease enter a username: "
-
-    let greet session = Session.write session horse_ascii
-  end
 
   let horseos = Horse_manager.create
 
@@ -55,7 +50,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
       log message;
 
       let session_initial = Session.of_flow flow in 
-      Horse_greeter.greet session_initial
+      Session.write session_initial Horse_greeter.ascii
       >> main session_initial
     );
 
