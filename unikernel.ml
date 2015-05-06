@@ -6,12 +6,16 @@ open Horse_greeter
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   module Session = Session.Tcp(S)
+  
+  module Logger = struct
+    let log c message = C.log c message 
+  end
 
   let horseos = Horse_manager.create
 
   let start c s =
 
-    let log message = C.log c message in
+    let log = Logger.log c in
 
     let rec listen_input session username =
       Session.read session (Horse_manager.broadcast_message horseos username)
