@@ -2,14 +2,14 @@ open Lwt
 
 module Tcp (S: V1_LWT.STACKV4) = struct
 
-  type t = { flow: S.TCPV4.flow; on_close: ( string -> unit ) }
+  type t = { flow: S.TCPV4.flow; on_close: ( string -> unit Lwt.t ) }
 
-  let of_flow f = { flow = f; on_close = fun _ -> () }
+  let of_flow f = { flow = f; on_close = fun _ -> Lwt.return_unit }
 
   let on_close session closer = { session with on_close = closer }
 
   let close session reason =
-    session.on_close reason;
+    session.on_close reason >>
     S.TCPV4.close session.flow
 
   let write session message =
