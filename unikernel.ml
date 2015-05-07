@@ -11,7 +11,7 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   module Logger = struct
     let log console udpv4  message =
-      C.log console message;
+      C.log_s console message >>
       S.UDPV4.write udpv4 ~dest_ip:logger_ip ~dest_port:5514 (Cstruct.of_string message)
   end
 
