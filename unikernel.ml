@@ -2,24 +2,20 @@ open Lwt
 open Session
 open Horse_manager
 open Horse_greeter
+open Logger
 
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
 
   module Session = Session.Tcp(S)
+  module Logger = Logger.Make(C)(S)
 
   let logger_ip = Ipaddr.V4.of_string_exn "127.0.0.1"
-
-  module Logger = struct
-    let log console udpv4  message =
-      C.log_s console message >>
-      S.UDPV4.write udpv4 ~dest_ip:logger_ip ~dest_port:5514 (Cstruct.of_string message)
-  end
 
   let horseos = Horse_manager.create
 
   let start c s =
 
-    let log = Logger.log c (S.udpv4 s) in
+    let log = Logger.create c (S.udpv4 s) logger_ip 5514 in
 
     let rec listen_input session username =
       Session.read session (Horse_manager.broadcast_message horseos username)
