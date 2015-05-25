@@ -46,6 +46,8 @@ module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
         )
       ) in
 
+    lwt () = log "HorseOS started" in
+
     S.listen_tcpv4 s ~port:4444 (fun flow ->
 
       let dst, dst_port = S.TCPV4.get_dest flow in
