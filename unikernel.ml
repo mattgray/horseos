@@ -4,16 +4,16 @@ open Horse_manager
 open Horse_greeter
 open Logger
 
-module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) = struct
+module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
 
   module Session = Session.Tcp(S)
-  module Logger = Logger.Make(C)(S)
+  module Logger = Logger.Make(C)(S)(CL)
 
   let logger_ip = Ipaddr.V4.of_string_exn "127.0.0.1"
 
   let horseos = Horse_manager.create
 
-  let start c s =
+  let start c s cl =
 
     let log = Logger.create c (S.udpv4 s) logger_ip 5514 in
 

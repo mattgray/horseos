@@ -1,6 +1,6 @@
 open Mirage
 
-let main = foreign "Unikernel.Main" (console @-> stackv4 @-> job)
+let main = foreign "Unikernel.Main" (console @-> stackv4 @-> clock @-> job)
 
 let xen =
   try match Sys.getenv "XEN" with
@@ -16,5 +16,5 @@ let stackv4 =
 
 let () =
   register "horseos" [
-      main $ default_console $ stackv4
+      main $ default_console $ stackv4 $ default_clock
   ]
