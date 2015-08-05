@@ -22,15 +22,11 @@ end
 module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
   open CL
 
-  let build_destination
-    (type a)
-    (module L : Log_destination with type config = a)
-    config
-    =
+  let build_destination (type a) (module L : Log_destination with type config = a) config =
     (module struct
       module Log_destination = L
       let this = L.create config
-        end : Log_destination_instance)
+    end : Log_destination_instance)
 
   let to_rfc3339_string (t : CL.tm) = sprintf "%04i-%02i-%02iT%02i:%02i:%02iZ" (t.tm_year + 1900) (t.tm_mon + 1) t.tm_mday t.tm_hour t.tm_min t.tm_sec
 
@@ -44,10 +40,10 @@ module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
       fun message ->
         let time = CL.time () in
         let console_dest = build_destination (module Log_to_console(C)) console in
-        let module I = ((val console_dest) : Log_destination_instance) in 
+        let module I = ((val console_dest) : Log_destination_instance) in
         begin
           I.Log_destination.send I.this time message;
-          Lwt.return_unit 
+          Lwt.return_unit
         end >>
         log_syslog udpv4 ip port (to_rfc3339_string (CL.gmtime time)) message
 end
