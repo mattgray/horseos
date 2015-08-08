@@ -4,7 +4,7 @@ module type Log_destination = sig
   type config
   type t
   val create: config -> t
-  val send: t -> float -> bytes -> unit
+  val send: t -> float -> bytes -> unit Lwt.t
 end
 
 module type Log_destination_instance = sig
@@ -16,7 +16,7 @@ module Log_to_console (C: V1_LWT.CONSOLE) = struct
   type config = C.t
   type t = C.t
   let create console = console
-  let send console time message = C.log console message
+  let send console time message = C.log_s console message
 end
 
 module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
@@ -41,9 +41,6 @@ module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
         let time = CL.time () in
         let console_dest = build_destination (module Log_to_console(C)) console in
         let module I = ((val console_dest) : Log_destination_instance) in
-        begin
-          I.Log_destination.send I.this time message;
-          Lwt.return_unit
-        end >>
-        log_syslog udpv4 ip port (to_rfc3339_string (CL.gmtime time)) message
+        I.Log_destination.send I.this time message >>
+          log_syslog udpv4 ip port (to_rfc3339_string (CL.gmtime time)) message
 end
