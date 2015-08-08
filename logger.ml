@@ -16,7 +16,8 @@ module Log_to_console (C: V1_LWT.CONSOLE) = struct
   type config = C.t
   type t = C.t
   let create console = console
-  let send console time message = C.log_s console message
+  let send console time message =
+    C.log_s console (sprintf "%f: %s" time message)
 end
 
 module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
