@@ -7,15 +7,17 @@ open Logger
 module Main (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
 
   module Session = Session.Tcp(S)
-  module Logger = Logger.Make(C)(S)(CL)
+  module Logger = Logger.Make(CL)
 
   let logger_ip = Ipaddr.V4.of_string_exn "127.0.0.1" (* loggly log address "54.209.84.18" *)
 
   let horseos = Horse_manager.create
 
   let start c s cl =
-
-    let log = Logger.create c (S.udpv4 s) logger_ip 514 in
+    let console_log = Logger.build_destination(module Log_to_console(C)) c in
+    let syslog = Logger.build_destination(module Log_to_syslog_udp(S.UDPV4)(CL))
+    {udp = S.udpv4 s; ip = logger_ip; port = 5514} in
+    let log = Logger.create [console_log; syslog] in
 
     let rec listen_input session username =
       Session.read session (Horse_manager.broadcast_message horseos username)

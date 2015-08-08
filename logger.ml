@@ -37,7 +37,7 @@ module Log_to_syslog_udp (U: V1_LWT.UDPV4) (CL: V1.CLOCK) = struct
       ~dest_ip:t.ip ~dest_port:t.port (Cstruct.of_string syslog_message)
 end
 
-module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
+module Make (CL: V1.CLOCK) = struct
   open CL
 
   let build_destination (type a) (module L : Log_destination with type config = a) config =
@@ -46,14 +46,10 @@ module Make (C: V1_LWT.CONSOLE) (S: V1_LWT.STACKV4) (CL: V1.CLOCK) = struct
       let this = L.create config
     end : Log_destination_instance)
 
-  let create console udpv4 ip port =
-      fun message ->
-        let time = CL.time () in
-        let console_dest = build_destination (module Log_to_console(C)) console in
-        let module I = ((val console_dest) : Log_destination_instance) in
-        let syslog_dest = build_destination (module Log_to_syslog_udp(S.UDPV4)(CL))
-          {udp = udpv4; ip; port} in
-        let module I2 = ((val syslog_dest) : Log_destination_instance) in
-        I.Log_destination.send I.this time message >>
-        I2.Log_destination.send I2.this time message
+  let create loggers =
+    fun message ->
+      let time = CL.time () in
+      let f = fun (module I : Log_destination_instance) ->
+        I.Log_destination.send I.this time message in
+      Lwt_list.iter_p f loggers
 end
