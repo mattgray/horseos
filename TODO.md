@@ -1,3 +1,4 @@
+* logger should not wait to log messages
 * syslog to take a syslog server hostname
 * syslog tags / hostname / facility / priority etc
 * does windows telnet works?
